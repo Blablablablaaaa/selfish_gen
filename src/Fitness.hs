@@ -1,13 +1,14 @@
--- src/Evolution/Fitness.hs
-module Evolution.Fitness (
+module Fitness (
     euclideanDistanceSquared,
     calculateFitness,
     compareToTarget
 ) where
 
-import Types (Phenotype, Genotype, genotypeToPhenotype)
+import Types
+import Phenotype
 import Codec.Picture
 import Codec.Picture.Types
+import Data.List (minimumBy)
 
 -- Евклидово расстояние без корня (сумма квадратов разностей)
 euclideanDistanceSquared :: Phenotype -> Phenotype -> Double
