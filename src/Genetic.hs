@@ -1,6 +1,7 @@
 module Genetic (
     randomGenotype,
-    mutateGenotype
+    mutateGenotype,
+    generatePopulation
 ) where
 
 import Types

@@ -76,7 +76,9 @@ executable selfish-gen
         vector >=0.12,         
         split >=0.2,
         juicy-draw >=0.1,
-        primitive
+        primitive,
+        filepath,
+        directory
 
     -- Directories containing source files.
     hs-source-dirs:   app
@@ -99,5 +101,7 @@ library
     vector >=0.12,         
     split >=0.2,
     juicy-draw >=0.1,
-    primitive
+    primitive, 
+    filepath,
+    directory
   default-language: Haskell2010

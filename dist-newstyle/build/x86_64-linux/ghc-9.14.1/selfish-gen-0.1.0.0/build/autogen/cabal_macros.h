@@ -30,6 +30,26 @@
   (major1) == 4 && (major2) <  22 || \
   (major1) == 4 && (major2) == 22 && (minor) <= 0)
 #endif /* MIN_VERSION_base */
+/* package directory-1.3.10.0 */
+#ifndef VERSION_directory
+#define VERSION_directory "1.3.10.0"
+#endif /* VERSION_directory */
+#ifndef MIN_VERSION_directory
+#define MIN_VERSION_directory(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  3 || \
+  (major1) == 1 && (major2) == 3 && (minor) <= 10)
+#endif /* MIN_VERSION_directory */
+/* package filepath-1.5.4.0 */
+#ifndef VERSION_filepath
+#define VERSION_filepath "1.5.4.0"
+#endif /* VERSION_filepath */
+#ifndef MIN_VERSION_filepath
+#define MIN_VERSION_filepath(major1,major2,minor) (\
+  (major1) <  1 || \
+  (major1) == 1 && (major2) <  5 || \
+  (major1) == 1 && (major2) == 5 && (minor) <= 4)
+#endif /* MIN_VERSION_filepath */
 /* package juicy-draw-0.2.0.0 */
 #ifndef VERSION_juicy_draw
 #define VERSION_juicy_draw "0.2.0.0"

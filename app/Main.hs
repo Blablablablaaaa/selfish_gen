@@ -16,14 +16,33 @@ main :: IO ()
 main = do
     gen <- getStdGen
     
-    let (geno1, generator1) = randomGenotype gen
-    putStrLn "Исходный генотип:"
-    print geno1
-
-    let (rand7gen, generator2) = getRandom7Genes generator1 7 (0, 14)
-
-    -- Создаем и сохраняем биоморф
-    let phenotype = genotypeToPhenotype rand7gen
-    savePhenotype "test.png" phenotype
+    -- Генерируем родительский генотип
+    let (parentGeno, generator1) = randomGenotype gen
+    putStrLn "Родительский генотип:"
+    print parentGeno
     
-    putStrLn "Биоморф сохранен в test.png"
+    -- Выбираем 7 генов для построения родителя
+    let (rand7gen, generator2) = getRandom7Genes generator1 7 (0, 14)
+    
+    -- Сохраняем родителя
+    let parentPhenotype = genotypeToPhenotype rand7gen
+    savePhenotype "parent.png" parentPhenotype
+    putStrLn "Родитель сохранен в parent.png"
+    
+    -- Генерируем 5 потомков
+    let (genotypes, generator3) = generatePopulation generator2 parentGeno 5
+    
+    -- Сохраняем каждого потомка с уникальными 7 генами
+    let saveAll :: RandomGen g => g -> Int -> [Genotype] -> IO ()
+        saveAll _ _ [] = pure ()
+        saveAll gen idx (geno:rest) = do
+            let (randGenes, newGen) = getRandom7Genes gen 7 (0, 14)
+                phenotype = genotypeToPhenotype randGenes
+                filename = "Children/child_" ++ show idx ++ ".png"
+            savePhenotype filename phenotype
+            putStrLn $ "Потомок " ++ show idx ++ " сохранен в " ++ filename
+            saveAll newGen (idx + 1) rest
+    
+    saveAll generator3 1 genotypes
+    
+    putStrLn "\nГотово! Проверьте папку Children."
