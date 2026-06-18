@@ -30,6 +30,26 @@
   (major1) == 4 && (major2) <  22 || \
   (major1) == 4 && (major2) == 22 && (minor) <= 0)
 #endif /* MIN_VERSION_base */
+/* package juicy-draw-0.2.0.0 */
+#ifndef VERSION_juicy_draw
+#define VERSION_juicy_draw "0.2.0.0"
+#endif /* VERSION_juicy_draw */
+#ifndef MIN_VERSION_juicy_draw
+#define MIN_VERSION_juicy_draw(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  2 || \
+  (major1) == 0 && (major2) == 2 && (minor) <= 0)
+#endif /* MIN_VERSION_juicy_draw */
+/* package primitive-0.9.1.0 */
+#ifndef VERSION_primitive
+#define VERSION_primitive "0.9.1.0"
+#endif /* VERSION_primitive */
+#ifndef MIN_VERSION_primitive
+#define MIN_VERSION_primitive(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  9 || \
+  (major1) == 0 && (major2) == 9 && (minor) <= 1)
+#endif /* MIN_VERSION_primitive */
 /* package random-1.2.1.3 */
 #ifndef VERSION_random
 #define VERSION_random "1.2.1.3"

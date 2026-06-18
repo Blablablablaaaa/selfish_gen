@@ -4,21 +4,22 @@ module Phenotype (
 ) where
 
 import Types
-import System.Random
 import Codec.Picture
 import Codec.Picture.Types
 import Codec.Picture.Drawing
+import Control.Monad.Primitive (PrimMonad, PrimState)
+import Control.Monad.ST (runST)
 import Data.Word (Word8)
 
 directionVector :: Direction -> (Int, Int)
 directionVector N  = (0, -1)    -- вверх
-directionVector NE = (1, 1)    -- вверх-вправо
-directionVector E  = (1, 0)    -- вправо
-directionVector SE = (1, -1)   -- вниз-вправо
-directionVector S  = (0, 1)   -- вниз
-directionVector SW = (-1, -1)  -- вниз-влево
-directionVector W  = (-1, 0)   -- влево
-directionVector NW = (-1, 1)   -- вверх-влево
+directionVector NE = (1, 1)     -- вверх-вправо
+directionVector E  = (1, 0)     -- вправо
+directionVector SE = (1, -1)    -- вниз-вправо
+directionVector S  = (0, 1)     -- вниз
+directionVector SW = (-1, -1)   -- вниз-влево
+directionVector W  = (-1, 0)    -- влево
+directionVector NW = (-1, 1)    -- вверх-влево
 
 genToDirections :: Gene -> Direction
 genToDirections gene = toEnum ((gene + 9) `mod` 8)
@@ -33,42 +34,34 @@ buildVector start (dir : directs) len =
     in segment : restSegments
 
 buildMirrorVectors :: Int -> [((Int, Int), (Int, Int))] -> [((Int, Int), (Int, Int))]
-buildMirrorVectors size segments = map (buildMirrorVector size) segments
+buildMirrorVectors size segments = map buildMirrorVector segments
     where
-        buildMirrorVector width ((x1, y1), (x2, y2)) = 
-            ((width - x1, y1), (width - x2, y2))
+        buildMirrorVector ((x1, y1), (x2, y2)) = 
+            ((size - 1 - x1, y1), (size - 1 - x2, y2))
 
-drawVector :: MutableImage PixelRGB8 -> [((Int, Int), (Int, Int))] -> PixelRGB8 -> MutableImage PixelRGB8
-drawVector canvas [] _ = canvas
-drawVector canvas ((start, end):rest) color = 
+drawSegments :: (PrimMonad m) => MutableImage (PrimState m) Pixel8 -> [((Int, Int), (Int, Int))] -> Pixel8 -> m ()
+drawSegments canvas [] _ = pure ()
+drawSegments canvas ((start, end):rest) color = do
     let (x1, y1) = start
         (x2, y2) = end
-
-        drawn = drawLine canvas x1 y1 x2 y2 color
-
-    in drawVector drawn rest color
+    drawLine canvas x1 y1 x2 y2 color
+    drawSegments canvas rest color
 
 genotypeToPhenotype :: Genotype -> Phenotype
 genotypeToPhenotype genotype = 
     let directions = map genToDirections genotype
-        
         stepLen = 10
-        
+        -- Берем первые 7 генов для построения скелета
         segments = buildVector (75, 75) directions stepLen
-
         size = 150
-        
         allSegments = segments ++ buildMirrorVectors size segments
-        
-        whitePixel = PixelRGB8 255 255 255
-        canvas = createMutableImage 150 150 whitePixel
-        
-        blackPixel = PixelRGB8 0 0 0
-        drawn = drawVector canvas allSegments blackPixel
-        
-    in freezeImage drawn
+        whitePixel = 255 :: Pixel8  -- белый фон
+        blackPixel = 0 :: Pixel8    -- черные линии
+    in runST $ do
+        canvas <- createMutableImage 150 150 whitePixel
+        drawSegments canvas allSegments blackPixel
+        freezeImage canvas
 
 savePhenotype :: FilePath -> Phenotype -> IO ()
 savePhenotype filename image = do
-    let rgbImage = pixelMap (\p -> PixelRGB8 p p p) image
-    savePngImage filename (ImageRGB8 rgbImage)
+    savePngImage filename (ImageRGB8 $ pixelMap (\p -> PixelRGB8 p p p) image)

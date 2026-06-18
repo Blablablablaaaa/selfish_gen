@@ -1,5 +1,6 @@
 module Main where
 
+import Types
 import Genetic
 import Phenotype
 import System.Random
@@ -7,30 +8,22 @@ import System.Random
 getRandom7Genes :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
 getRandom7Genes generator 0 _ = ([], generator)
 getRandom7Genes generator n range =
-    let (value, gen') = randomR range gen
+    let (value, gen') = randomR range generator
         (values, gen'') = getRandom7Genes gen' (n-1) range
     in (value : values, gen'')
 
 main :: IO ()
 main = do
-    putStrLn "=== Тест Genetics ==="
-    
-    -- Создаем генератор
     gen <- getStdGen
     
-    -- Генерируем генотип
-    let (geno1, gen1) = randomGenotype gen
+    let (geno1, generator1) = randomGenotype gen
     putStrLn "Исходный генотип:"
     print geno1
+
+    let (rand7gen, generator2) = getRandom7Genes generator1 7 (0, 14)
+
+    -- Создаем и сохраняем биоморф
+    let phenotype = genotypeToPhenotype rand7gen
+    savePhenotype "test.png" phenotype
     
-    -- Мутируем
-    let (geno2, gen2) = mutateGenotype gen1 geno1
-    putStrLn "Мутированный генотип:"
-    print geno2
-    
-    -- Мутируем еще раз
-    let (geno3, _) = mutateGenotype gen2 geno1
-    putStrLn "Другой мутированный:"
-    print geno3
-    
-    putStrLn "=== Тест завершен ==="
+    putStrLn "Биоморф сохранен в test.png"
