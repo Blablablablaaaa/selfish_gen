@@ -1,6 +1,5 @@
 module Phenotype (
-    genotypeToPhenotype,
-    savePhenotype
+    genotypeToPhenotype
 ) where
 
 import Types
@@ -61,6 +60,3 @@ genotypeToPhenotype genotype =
         drawSegments canvas allSegments blackPixel
         freezeImage canvas
 
-savePhenotype :: FilePath -> Phenotype -> IO ()
-savePhenotype filename image = do
-    savePngImage filename (ImageRGB8 $ pixelMap (\p -> PixelRGB8 p p p) image)

@@ -1,6 +1,5 @@
 module Genetic (
     randomGenotype,
-    mutateGenotype,
     generatePopulation
 ) where
 
