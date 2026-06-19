@@ -51,7 +51,6 @@ genotypeToPhenotype :: Genotype -> Phenotype
 genotypeToPhenotype genotype = 
     let directions = map genToDirections genotype
         stepLen = 10
-        -- Берем первые 7 генов для построения скелета
         segments = buildVector (75, 75) directions stepLen
         size = 150
         allSegments = segments ++ buildMirrorVectors size segments

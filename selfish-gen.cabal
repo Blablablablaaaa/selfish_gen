@@ -92,7 +92,8 @@ library
     Genetic 
     Types
     Phenotype   
-    Fitness      
+    Fitness
+    Evolution      
   hs-source-dirs:   src
   build-depends:    
     base ^>=4.22.0.0,
