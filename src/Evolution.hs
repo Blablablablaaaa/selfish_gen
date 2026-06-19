@@ -12,11 +12,14 @@ import Codec.Picture (writePng)
 import Control.Monad (mapM_, when)
 
 getRandomPositions :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
-getRandomPositions gen 0 _ = ([], gen)
-getRandomPositions gen n range =
-    let (pos, gen') = randomR range gen
-        (rest, gen'') = getRandomPositions gen' (n-1) range
-    in (pos : rest, gen'')
+getRandomPositions gen count range = go gen count []
+  where
+    go g 0 acc = (acc, g)
+    go g n acc =
+        let (pos, g') = randomR range g
+        in if pos `elem` acc
+           then go g' n acc              -- дубликат — выбираем заново
+           else go g' (n - 1) (pos : acc)
 
 selectGenesByPositions :: [Int] -> Genotype -> [Gene]
 selectGenesByPositions positions genotype = map (genotype !!) positions
