@@ -21,7 +21,6 @@ clearDirectory dir = do
 main :: IO ()
 main = do
 
-    -- 1. Очистить папку Children
     clearDirectory "Children"
     
     Right img <- readImage "kotic.png"
@@ -33,7 +32,6 @@ main = do
     
     putStrLn "Целевое изображение загружено"
 
-    -- Генерируем родителя
     gen <- getStdGen
     let (parent, gen1) = randomGenotype gen
     

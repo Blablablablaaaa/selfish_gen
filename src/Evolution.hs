@@ -11,7 +11,6 @@ import System.Random
 import Codec.Picture (writePng)
 import Control.Monad (mapM_, when)
 
--- Получить 7 случайных позиций (индексов) от 0 до 14
 getRandomPositions :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
 getRandomPositions gen 0 _ = ([], gen)
 getRandomPositions gen n range =
@@ -19,7 +18,6 @@ getRandomPositions gen n range =
         (rest, gen'') = getRandomPositions gen' (n-1) range
     in (pos : rest, gen'')
 
--- Получить 7 случайных генов из генотипа
 getRandom7Genes :: RandomGen g => g -> Genotype -> ([Int], g)
 getRandom7Genes generator genotype =
     let (positions, gen') = getRandomPositions generator 7 (0, 14)
@@ -46,11 +44,9 @@ processingChildren generator targetPhenotype (child:children) =
         results = (genes, fullGen, fitness) : restResults
     in (results, gen2)
 
--- processingChildren ОБЁРТКА с IO для сохранения
 processingChildrenWithSave :: RandomGen g => g -> Phenotype -> Int -> [Genotype] -> IO ([([Gene], Genotype, Double)], g)
 processingChildrenWithSave generator targetPhenotype generation children = do
     let (results, finalGen) = processingChildren generator targetPhenotype children
-    -- Сохраняем фенотип каждого ребёнка (используем selectedGenes)
     mapM_ (\(idx, (selectedGenes, _, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype selectedGenes)) (zip [0..] results)
     return (results, finalGen)
 
@@ -58,7 +54,7 @@ getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> IO ()
 getEvolution gen0 targetPhenotype initialParent = 
     let cnt_child = 20
         stagnationLimit = 10
-        maxGenerations = 10000
+        maxGenerations = 300
 
         loop :: RandomGen g => g -> Int -> Genotype -> [Gene] -> Double -> Int -> IO ()
         loop gen currentGen parent bestSelected bestFitness stagnationCounter
@@ -99,7 +95,6 @@ getEvolution gen0 targetPhenotype initialParent =
                 loop gen'' (currentGen + 1) bestFullGen bestSelectedGenes bestFitnessNew newStagnationCounter
 
     in do
-        -- Вычисляем начальный фитнес и выбранные 7 генов родителя
         let (initSelected, initFull, initFit, gen1) = processingChild gen0 targetPhenotype initialParent
         putStrLn $ "Начальный фитнес родителя: " ++ show initFit
         loop gen1 1 initFull initSelected initFit 0
