@@ -88,8 +88,7 @@ executable selfish-gen
 
 library
   exposed-modules:
-    Hello
-    Genetic 
+    Genetic
     Types
     Phenotype   
     Fitness

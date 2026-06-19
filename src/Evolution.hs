@@ -11,95 +11,82 @@ import System.Random
 import Codec.Picture (writePng)
 import Control.Monad (mapM_, when)
 
--- Получить 7 случайных позиций (индексов) от 0 до 14
-getRandomPositions :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
-getRandomPositions gen 0 _ = ([], gen)
-getRandomPositions gen n range =
-    let (pos, gen') = randomR range gen
-        (rest, gen'') = getRandomPositions gen' (n-1) range
-    in (pos : rest, gen'')
-
--- Получить 7 случайных генов из генотипа
-getRandom7Genes :: RandomGen g => g -> Genotype -> ([Int], g)
-getRandom7Genes generator genotype =
-    let (positions, gen') = getRandomPositions generator 7 (0, 14)
-        selectedGenes = map (genotype !!) positions
-    in (selectedGenes, gen')
-
 saveChildPhenotype :: Int -> Int -> Phenotype -> IO ()
 saveChildPhenotype generation childIndex phenotype =
     let filename = "Children/gen_" ++ show generation ++ "_child_" ++ show childIndex ++ ".png"
     in writePng filename phenotype
 
-processingChild :: RandomGen g => g -> Phenotype -> Genotype -> ([Gene], Genotype, Double, g)
-processingChild generator targetPhenotype child_genotype = 
-    let (selectedGenes, gen1) = getRandom7Genes generator child_genotype
-        phenotype = genotypeToPhenotype selectedGenes
+-- Строим фенотип ребёнка из его полного генотипа и считаем фитнес
+processingChild :: Phenotype -> Genotype -> (Genotype, Double)
+processingChild targetPhenotype child_genotype =
+    let phenotype = genotypeToPhenotype child_genotype
         fitness = euclideanDistanceSquared targetPhenotype phenotype
-    in (selectedGenes, child_genotype, fitness, gen1)
+    in (child_genotype, fitness)
 
-processingChildren :: RandomGen g => g -> Phenotype -> [Genotype] -> ([([Gene], Genotype, Double)], g)
-processingChildren generator targetPhenotype [] = ([], generator)
-processingChildren generator targetPhenotype (child:children) = 
-    let (genes, fullGen, fitness, gen1) = processingChild generator targetPhenotype child
-        (restResults, gen2) = processingChildren gen1 targetPhenotype children
-        results = (genes, fullGen, fitness) : restResults
-    in (results, gen2)
+processingChildren :: Phenotype -> [Genotype] -> [(Genotype, Double)]
+processingChildren targetPhenotype = map (processingChild targetPhenotype)
 
--- processingChildren ОБЁРТКА с IO для сохранения
-processingChildrenWithSave :: RandomGen g => g -> Phenotype -> Int -> [Genotype] -> IO ([([Gene], Genotype, Double)], g)
-processingChildrenWithSave generator targetPhenotype generation children = do
-    let (results, finalGen) = processingChildren generator targetPhenotype children
-    -- Сохраняем фенотип каждого ребёнка (используем selectedGenes)
-    mapM_ (\(idx, (selectedGenes, _, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype selectedGenes)) (zip [0..] results)
-    return (results, finalGen)
+-- processingChildren ОБЁРТКА с IO для сохранения фенотипов
+processingChildrenWithSave :: Phenotype -> Int -> [Genotype] -> IO [(Genotype, Double)]
+processingChildrenWithSave targetPhenotype generation children = do
+    let results = processingChildren targetPhenotype children
+    mapM_ (\(idx, (genotype, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype genotype))
+          (zip [0..] results)
+    return results
 
 getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> IO ()
-getEvolution gen0 targetPhenotype initialParent = 
+getEvolution gen0 targetPhenotype initialParent =
     let cnt_child = 20
         stagnationLimit = 10
         maxGenerations = 10000
 
-        loop :: RandomGen g => g -> Int -> Genotype -> [Gene] -> Double -> Int -> IO ()
-        loop gen currentGen parent bestSelected bestFitness stagnationCounter
+        saveBest :: Genotype -> Double -> IO ()
+        saveBest bestGenotype bestFitness = do
+            let filename = "Best_last.png"
+            writePng filename (genotypeToPhenotype bestGenotype)
+            putStrLn $ "Лучший фенотип сохранён как " ++ filename
+            putStrLn $ "Фитнес: " ++ show bestFitness
+
+        -- parent / parentFitness — текущий родитель;
+        -- bestGenotype / bestFitness — глобально лучший за всю эволюцию.
+        loop :: RandomGen g => g -> Int -> Genotype -> Double -> Genotype -> Double -> Int -> IO ()
+        loop gen currentGen parent parentFitness bestGenotype bestFitness stagnationCounter
             | stagnationCounter >= stagnationLimit = do
                 putStrLn "\n=== Эволюция остановлена: стагнация 10 поколений ==="
-                let bestPhenotype = genotypeToPhenotype bestSelected
-                    filename = "Best_last.png"
-                writePng filename bestPhenotype
-                putStrLn $ "Лучший фенотип сохранён как " ++ filename
-                putStrLn $ "Фитнес: " ++ show bestFitness
+                saveBest bestGenotype bestFitness
             | currentGen > maxGenerations = do
                 putStrLn "\n=== Достигнуто максимальное число поколений ==="
-                let bestPhenotype = genotypeToPhenotype bestSelected
-                    filename = "Best_last.png"
-                writePng filename bestPhenotype
-                putStrLn $ "Лучший фенотип сохранён как " ++ filename
-                putStrLn $ "Фитнес: " ++ show bestFitness
+                saveBest bestGenotype bestFitness
             | otherwise = do
                 let (population, gen') = generatePopulation gen parent cnt_child
-                (result_child, gen'') <- processingChildrenWithSave gen' targetPhenotype currentGen population
+                result_child <- processingChildrenWithSave targetPhenotype currentGen population
 
                 putStrLn $ "\n=== Поколение " ++ show currentGen ++ " ==="
-                mapM_ (\(idx, (_, _, fitness)) ->
+                mapM_ (\(idx, (_, fitness)) ->
                     putStrLn $ "Ребёнок " ++ show idx ++ ": фитнес = " ++ show fitness
                     ) (zip [0..] result_child)
 
-                let (bestSelectedGenes, bestFullGen, bestFitnessNew) = 
-                        minimumBy (\(_, _, f1) (_, _, f2) -> compare f1 f2) result_child
-                putStrLn $ "Лучший фитнес в поколении " ++ show currentGen ++ ": " ++ show bestFitnessNew
+                let (genBest, genBestFitness) =
+                        minimumBy (\(_, f1) (_, f2) -> compare f1 f2) result_child
+                putStrLn $ "Лучший фитнес в поколении " ++ show currentGen ++ ": " ++ show genBestFitness
 
+                -- Сравниваем с глобально лучшим, а не с прошлым поколением
                 let improvementThreshold = 0.999
-                    improved = bestFitnessNew < bestFitness * improvementThreshold
+                    improved = genBestFitness < bestFitness * improvementThreshold
                     newStagnationCounter = if improved then 0 else stagnationCounter + 1
+                    (newBestGenotype, newBestFitness) =
+                        if genBestFitness < bestFitness
+                        then (genBest, genBestFitness)
+                        else (bestGenotype, bestFitness)
 
                 when (stagnationCounter > 0 && improved) $
                     putStrLn "Стагнация прервана!"
 
-                loop gen'' (currentGen + 1) bestFullGen bestSelectedGenes bestFitnessNew newStagnationCounter
+                -- Лучший ребёнок поколения становится родителем следующего
+                loop gen' (currentGen + 1) genBest genBestFitness
+                     newBestGenotype newBestFitness newStagnationCounter
 
     in do
-        -- Вычисляем начальный фитнес и выбранные 7 генов родителя
-        let (initSelected, initFull, initFit, gen1) = processingChild gen0 targetPhenotype initialParent
+        let (_, initFit) = processingChild targetPhenotype initialParent
         putStrLn $ "Начальный фитнес родителя: " ++ show initFit
-        loop gen1 1 initFull initSelected initFit 0
+        loop gen0 1 initialParent initFit initialParent initFit 0

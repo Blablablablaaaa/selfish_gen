@@ -48,9 +48,9 @@ drawSegments canvas ((start, end):rest) color = do
     drawSegments canvas rest color
 
 genotypeToPhenotype :: Genotype -> Phenotype
-genotypeToPhenotype genotype = 
-    let directions = map genToDirections genotype
-        stepLen = 10
+genotypeToPhenotype genotype =
+    let directions = map genToDirections (take 15 genotype)  -- первые 15 генов задают скелет
+        stepLen = genotype !! 15                             -- 16-й ген задаёт длину отрезков (2..12)
         segments = buildVector (75, 75) directions stepLen
         size = 150
         allSegments = segments ++ buildMirrorVectors size segments
