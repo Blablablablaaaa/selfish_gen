@@ -11,6 +11,7 @@ import System.Random
 import Codec.Picture (writePng)
 import Control.Monad (mapM_, when)
 
+-- Генерация случайных позиций (индексов) – используется только один раз
 getRandomPositions :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
 getRandomPositions gen 0 _ = ([], gen)
 getRandomPositions gen n range =
@@ -18,43 +19,49 @@ getRandomPositions gen n range =
         (rest, gen'') = getRandomPositions gen' (n-1) range
     in (pos : rest, gen'')
 
-getRandom7Genes :: RandomGen g => g -> Genotype -> ([Int], g)
-getRandom7Genes generator genotype =
-    let (positions, gen') = getRandomPositions generator 7 (0, 14)
-        selectedGenes = map (genotype !!) positions
-    in (selectedGenes, gen')
+-- Выбор генов по фиксированным позициям (чистая функция)
+selectGenesByPositions :: [Int] -> Genotype -> [Gene]
+selectGenesByPositions positions genotype = map (genotype !!) positions
+
+-- Построение фенотипа и вычисление фитнеса для одного генотипа (чистая функция)
+processChildFixed :: [Int] -> Phenotype -> Genotype -> ([Gene], Genotype, Double)
+processChildFixed positions target childGenotype =
+    let selected = selectGenesByPositions positions childGenotype
+        phenotype = genotypeToPhenotype selected
+        fitness = euclideanDistanceSquared target phenotype
+    in (selected, childGenotype, fitness)
+
+-- Обработка списка потомков (чистая функция)
+processChildrenFixed :: [Int] -> Phenotype -> [Genotype] -> [([Gene], Genotype, Double)]
+processChildrenFixed positions target children = map (processChildFixed positions target) children
+
+-- Сохранение фенотипов детей в папку Children и возврат результатов
+processingChildrenWithSave :: [Int] -> Phenotype -> Int -> [Genotype] -> IO [([Gene], Genotype, Double)]
+processingChildrenWithSave positions target generation children = do
+    let results = processChildrenFixed positions target children
+    mapM_ (\(idx, (selected, _, _)) -> 
+        saveChildPhenotype generation idx (genotypeToPhenotype selected)) (zip [0..] results)
+    return results
 
 saveChildPhenotype :: Int -> Int -> Phenotype -> IO ()
 saveChildPhenotype generation childIndex phenotype =
     let filename = "Children/gen_" ++ show generation ++ "_child_" ++ show childIndex ++ ".png"
     in writePng filename phenotype
 
-processingChild :: RandomGen g => g -> Phenotype -> Genotype -> ([Gene], Genotype, Double, g)
-processingChild generator targetPhenotype child_genotype = 
-    let (selectedGenes, gen1) = getRandom7Genes generator child_genotype
-        phenotype = genotypeToPhenotype selectedGenes
-        fitness = euclideanDistanceSquared targetPhenotype phenotype
-    in (selectedGenes, child_genotype, fitness, gen1)
-
-processingChildren :: RandomGen g => g -> Phenotype -> [Genotype] -> ([([Gene], Genotype, Double)], g)
-processingChildren generator targetPhenotype [] = ([], generator)
-processingChildren generator targetPhenotype (child:children) = 
-    let (genes, fullGen, fitness, gen1) = processingChild generator targetPhenotype child
-        (restResults, gen2) = processingChildren gen1 targetPhenotype children
-        results = (genes, fullGen, fitness) : restResults
-    in (results, gen2)
-
-processingChildrenWithSave :: RandomGen g => g -> Phenotype -> Int -> [Genotype] -> IO ([([Gene], Genotype, Double)], g)
-processingChildrenWithSave generator targetPhenotype generation children = do
-    let (results, finalGen) = processingChildren generator targetPhenotype children
-    mapM_ (\(idx, (selectedGenes, _, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype selectedGenes)) (zip [0..] results)
-    return (results, finalGen)
-
+-- Основная функция эволюции
 getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> IO ()
 getEvolution gen0 targetPhenotype initialParent = 
     let cnt_child = 20
         stagnationLimit = 10
         maxGenerations = 300
+
+        -- ОДИН РАЗ генерируем 7 случайных позиций, которые будут использоваться везде
+        (positions, gen0') = getRandomPositions gen0 7 (0,14)
+
+        -- Начальный фитнес родителя с этими позициями
+        initSelected = selectGenesByPositions positions initialParent
+        initPhenotype = genotypeToPhenotype initSelected
+        initFit = euclideanDistanceSquared targetPhenotype initPhenotype
 
         loop :: RandomGen g => g -> Int -> Genotype -> [Gene] -> Double -> Int -> IO ()
         loop gen currentGen parent bestSelected bestFitness stagnationCounter
@@ -74,7 +81,8 @@ getEvolution gen0 targetPhenotype initialParent =
                 putStrLn $ "Фитнес: " ++ show bestFitness
             | otherwise = do
                 let (population, gen') = generatePopulation gen parent cnt_child
-                (result_child, gen'') <- processingChildrenWithSave gen' targetPhenotype currentGen population
+                -- Здесь positions уже фиксированы (захвачены из let)
+                result_child <- processingChildrenWithSave positions targetPhenotype currentGen population
 
                 putStrLn $ "\n=== Поколение " ++ show currentGen ++ " ==="
                 mapM_ (\(idx, (_, _, fitness)) ->
@@ -92,9 +100,9 @@ getEvolution gen0 targetPhenotype initialParent =
                 when (stagnationCounter > 0 && improved) $
                     putStrLn "Стагнация прервана!"
 
-                loop gen'' (currentGen + 1) bestFullGen bestSelectedGenes bestFitnessNew newStagnationCounter
+                loop gen' (currentGen + 1) bestFullGen bestSelectedGenes bestFitnessNew newStagnationCounter
 
     in do
-        let (initSelected, initFull, initFit, gen1) = processingChild gen0 targetPhenotype initialParent
         putStrLn $ "Начальный фитнес родителя: " ++ show initFit
-        loop gen1 1 initFull initSelected initFit 0
+        putStrLn $ "Зафиксированы позиции для отбора генов: " ++ show positions
+        loop gen0' 1 initialParent initSelected initFit 0
