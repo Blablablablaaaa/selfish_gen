@@ -61,6 +61,162 @@
   </div>
 </section>
 
+<!-- INTRO: Haskell -->
+<section class="slide">
+  <h2>Что такое Haskell</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Функциональный язык</h3>
+      <p class="small">Программа описывается как набор правил работы с данными, а не как последовательность команд.</p>
+      <h3>Компилируемый</h3>
+      <p class="small">Сильная проверка на этапе компиляции: если собралось — чаще всего работает.</p>
+      <h3>Неизменяемые данные</h3>
+      <p class="small">Значения не меняются после создания; нет изменения состояния «на месте».</p>
+    </div>
+    <div class="col">
+      <h3>Чистые функции</h3>
+      <p class="small">При одинаковых аргументах — всегда одинаковый результат, без скрытых эффектов.</p>
+      <h3>Статическая типизация</h3>
+      <p class="small">Все типы известны на этапе компиляции — большинство ошибок ловится до запуска.</p>
+      <h3>Ленивые вычисления</h3>
+      <p class="small">Значение вычисляется только тогда, когда реально нужно.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Типы и вывод типов</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Как читать сигнатуры</h3>
+      <p class="small">Тип пишется после <code>::</code>. Стрелки <code>-&gt;</code> разделяют аргументы; последний тип — результат.</p>
+<pre><code><span class="fn">genToDirections</span> <span class="op">::</span> Gene <span class="op">-&gt;</span> Direction
+<span class="cm">-- принимает ген, возвращает направление</span>
+
+<span class="fn">euclideanDistanceSquared</span>
+  <span class="op">::</span> Phenotype <span class="op">-&gt;</span> Phenotype <span class="op">-&gt;</span> Double
+<span class="cm">-- две картинки → число (последнее — результат)</span></code></pre>
+      <p class="note">Вывод типов: тип обычно можно не писать — компилятор выведет сам.</p>
+    </div>
+    <div class="col">
+      <h3>Каррирование</h3>
+      <p class="small">Любая функция от нескольких аргументов — это цепочка функций от одного. В C++ аналог — вернуть <code>std::function</code>:</p>
+<pre><code>auto add(int x){
+  return [=](int y){ return x+y; };
+}</code></pre>
+      <h3>Композиция <code>f . g</code></h3>
+      <p class="small"><code>(f . g) x = f (g x)</code> — обернуть один вызов в другой, как <code>outer(inner(x))</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Списки</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Базовые операции</h3>
+      <p class="small"><b>Создание:</b> <code>[1,2,3]</code> или диапазон <code>[0..14]</code> — аналог <code>std::vector</code> / <code>std::iota</code>.</p>
+      <p class="small"><b>Голова и хвост:</b> <code>x : xs</code> — добавить элемент в начало или разобрать список на первый и остаток.</p>
+      <p class="small"><b>Конкатенация:</b> <code>xs ++ ys</code> — создаёт новый список, исходные не меняются (всё неизменяемо).</p>
+    </div>
+    <div class="col">
+      <h3>List comprehension</h3>
+      <p class="small">Список описывается правилом, а не циклом:</p>
+<pre><code>[ x<span class="op">*</span><span class="num">2</span> | x <span class="op">&lt;-</span> [<span class="num">1</span>..<span class="num">5</span>] ]
+<span class="cm">-- [2,4,6,8,10]</span>
+
+[ x | x <span class="op">&lt;-</span> xs, x <span class="op">&gt;</span> <span class="num">0</span> ]
+<span class="cm">-- фильтрация: как [x for x in xs if x>0]</span>
+
+[ (x,y) | x <span class="op">&lt;-</span> xs, y <span class="op">&lt;-</span> ys ]
+<span class="cm">-- два генератора → декартово произведение</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Функции высшего порядка</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Лямбды</h3>
+      <p class="small"><code>\x -&gt; x * 2</code> — анонимная функция, как <code>[](int x){ return x*2; }</code> в C++, только короче.</p>
+      <h3>Функции — обычные значения</h3>
+      <p class="small">Функцию можно передать в другую функцию, вернуть из функции, положить в список. Как <code>std::function</code>, но без лишнего синтаксиса.</p>
+    </div>
+    <div class="col">
+      <h3>Аналог <code>std::ranges</code> (C++20)</h3>
+      <p class="small">Ленивые цепочки <code>views::transform | views::filter</code> — ближайший аналог. В Haskell это поведение по умолчанию.</p>
+      <h3>Первоклассные функции</h3>
+      <p class="small">В C++ поведение передают шаблонным параметром или <code>std::function</code>. В Haskell функции первоклассны: передаются так же легко, как <code>int</code>, без оверхеда шаблонов.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Чистота и IO</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Чистые функции</h3>
+      <p class="small">Не обращаются к внешнему миру, ничего не печатают — только вычисляют. Их легко тестировать и переставлять местами.</p>
+      <h3>Граница видна в типе</h3>
+<pre><code><span class="fn">genotypeToPhenotype</span>
+  <span class="op">::</span> Genotype <span class="op">-&gt;</span> Phenotype   <span class="cm">-- чистая</span>
+
+<span class="fn">getStdGen</span> <span class="op">::</span> IO StdGen          <span class="cm">-- эффект (мир)</span></code></pre>
+      <p class="note">Тип <code>IO</code> честно помечает функции с побочным эффектом.</p>
+    </div>
+    <div class="col">
+      <h3>Монады — кратко</h3>
+      <p class="small">Монада — способ «протащить» контекст сквозь цепочку функций, не передавая его явно в каждую.</p>
+      <p class="small">Знакомая аналогия — <code>async/await</code> в JavaScript: <code>async</code>-функция возвращает обёрнутое значение, а <code>await</code> «достаёт» его внутри нужного контекста. В Haskell ту же роль для эффектов играет <code>IO</code> и <code>do</code>-нотация.</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Рекурсия и ленивость</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Нет <code>for</code> и <code>while</code></h3>
+      <p class="small">Итерация — через рекурсию. Компилятор часто превращает её в цикл; но из-за ленивости иногда нужны строгие свёртки (<code>foldl'</code>), иначе копятся отложенные вычисления.</p>
+      <h3>Базовый случай + рекурсивный</h3>
+      <p class="small">Структура как у математической индукции: знаем ответ для простого случая, сложный сводим к нему.</p>
+    </div>
+    <div class="col">
+      <h3>Ленивые вычисления</h3>
+      <p class="small">Значение создаётся по требованию. Можно описать бесконечный список <code>[1..]</code> — в памяти окажутся только реально нужные элементы.</p>
+      <h3>Аналог в C++</h3>
+      <p class="small">Вьюхи <code>std::ranges</code> (<code>transform | filter</code>) тоже ленивы и не материализуют промежуточные контейнеры. В Haskell так работает всё по умолчанию.</p>
+      <h3>Подводный камень</h3>
+      <p class="small">Сложнее предсказать момент вычисления: цепочка отложенных операций может накапливаться (утечка памяти).</p>
+    </div>
+  </div>
+</section>
+
+<section class="slide">
+  <h2>Зачем Haskell</h2>
+  <div class="cols">
+    <div class="col">
+      <h3>Что даёт разработчику</h3>
+      <ul>
+        <li><b>Типизация:</b> компилятор ловит ошибки до запуска.</li>
+        <li><b>Чистота:</b> легко тестировать, нет скрытых зависимостей.</li>
+        <li><b>Выразительность:</b> описываем <i>что</i>, а не <i>как</i>.</li>
+        <li><b>Паттерны:</b> читаемая обработка случаев.</li>
+        <li><b>Ленивость:</b> работа с потенциально бесконечными структурами.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Что сложно</h3>
+      <ul>
+        <li>Монады — непривычная концепция без прямых аналогов в ООП-языках.</li>
+        <li>Ленивость усложняет рассуждения о производительности.</li>
+        <li>Сообщество меньше, чем у мейнстримных языков.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <!-- 2 -->
 <section class="slide">
   <h2>Идея</h2>
