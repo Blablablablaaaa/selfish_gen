@@ -53,7 +53,7 @@ genotypeToPhenotype :: [Int] -> Genotype -> Phenotype
 genotypeToPhenotype mask genotype =
     let selectedGenes = map (genotype !!) mask                -- случайно выбранные 7 генов
         directions = map genToDirections selectedGenes        -- 7 генов задают скелет
-        stepLen = genotype !! 15                              -- 16-й ген задаёт длину отрезков (2..12)
+        stepLen = (genotype !! 15) * 5                        -- 16-й ген задаёт длину (2..12), масштаб x5 -> 10..60 px
         segments = buildVector (75, 75) directions stepLen
         size = 150
         allSegments = segments ++ buildMirrorVectors size segments
