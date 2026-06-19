@@ -36,9 +36,14 @@ main = do
     -- Генерируем родителя
     gen <- getStdGen
     let (parent, gen1) = randomGenotype gen
-    
+
     putStrLn "\nРодительский генотип:"
     print parent
 
-    getEvolution gen1 targetPhenotype parent
+    -- Выбираем 7 случайных генов из 15 ОДИН раз — маска фиксируется на весь запуск
+    let (mask, gen2) = randomMask gen1
+    putStrLn "\nМаска (позиции 7 выбранных генов):"
+    print mask
+
+    getEvolution gen2 mask targetPhenotype parent
     putStrLn "\nГотово."

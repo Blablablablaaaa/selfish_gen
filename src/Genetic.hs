@@ -1,11 +1,24 @@
 module Genetic (
     randomGenotype,
+    randomMask,
     mutateGenotype,
     generatePopulation
 ) where
 
 import Types
 import System.Random
+
+-- Выбираем 7 РАЗНЫХ случайных позиций из [0..14] — это «маска» генов,
+-- которые участвуют в построении скелета. Выбирается ОДИН раз за запуск.
+randomMask :: RandomGen g => g -> ([Int], g)
+randomMask gen = go gen 7 []
+  where
+    go g 0 acc = (acc, g)
+    go g n acc =
+        let (pos, g') = randomR (0, 14) g
+        in if pos `elem` acc
+           then go g' n acc          -- дубликат — пробуем ещё раз
+           else go g' (n - 1) (pos : acc)
 
 generateGenes :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
 generateGenes generator 0 _ = ([], generator)

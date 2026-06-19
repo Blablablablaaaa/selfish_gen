@@ -16,26 +16,26 @@ saveChildPhenotype generation childIndex phenotype =
     let filename = "Children/gen_" ++ show generation ++ "_child_" ++ show childIndex ++ ".png"
     in writePng filename phenotype
 
--- Строим фенотип ребёнка из его полного генотипа и считаем фитнес
-processingChild :: Phenotype -> Genotype -> (Genotype, Double)
-processingChild targetPhenotype child_genotype =
-    let phenotype = genotypeToPhenotype child_genotype
+-- Строим фенотип ребёнка из его генотипа (по фиксированной маске) и считаем фитнес
+processingChild :: [Int] -> Phenotype -> Genotype -> (Genotype, Double)
+processingChild mask targetPhenotype child_genotype =
+    let phenotype = genotypeToPhenotype mask child_genotype
         fitness = euclideanDistanceSquared targetPhenotype phenotype
     in (child_genotype, fitness)
 
-processingChildren :: Phenotype -> [Genotype] -> [(Genotype, Double)]
-processingChildren targetPhenotype = map (processingChild targetPhenotype)
+processingChildren :: [Int] -> Phenotype -> [Genotype] -> [(Genotype, Double)]
+processingChildren mask targetPhenotype = map (processingChild mask targetPhenotype)
 
 -- processingChildren ОБЁРТКА с IO для сохранения фенотипов
-processingChildrenWithSave :: Phenotype -> Int -> [Genotype] -> IO [(Genotype, Double)]
-processingChildrenWithSave targetPhenotype generation children = do
-    let results = processingChildren targetPhenotype children
-    mapM_ (\(idx, (genotype, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype genotype))
+processingChildrenWithSave :: [Int] -> Phenotype -> Int -> [Genotype] -> IO [(Genotype, Double)]
+processingChildrenWithSave mask targetPhenotype generation children = do
+    let results = processingChildren mask targetPhenotype children
+    mapM_ (\(idx, (genotype, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype mask genotype))
           (zip [0..] results)
     return results
 
-getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> IO ()
-getEvolution gen0 targetPhenotype initialParent =
+getEvolution :: RandomGen g => g -> [Int] -> Phenotype -> Genotype -> IO ()
+getEvolution gen0 mask targetPhenotype initialParent =
     let cnt_child = 20
         stagnationLimit = 10
         maxGenerations = 10000
@@ -43,7 +43,7 @@ getEvolution gen0 targetPhenotype initialParent =
         saveBest :: Genotype -> Double -> IO ()
         saveBest bestGenotype bestFitness = do
             let filename = "Best_last.png"
-            writePng filename (genotypeToPhenotype bestGenotype)
+            writePng filename (genotypeToPhenotype mask bestGenotype)
             putStrLn $ "Лучший фенотип сохранён как " ++ filename
             putStrLn $ "Фитнес: " ++ show bestFitness
 
@@ -59,7 +59,7 @@ getEvolution gen0 targetPhenotype initialParent =
                 saveBest bestGenotype bestFitness
             | otherwise = do
                 let (population, gen') = generatePopulation gen parent cnt_child
-                result_child <- processingChildrenWithSave targetPhenotype currentGen population
+                result_child <- processingChildrenWithSave mask targetPhenotype currentGen population
 
                 putStrLn $ "\n=== Поколение " ++ show currentGen ++ " ==="
                 mapM_ (\(idx, (_, fitness)) ->
@@ -87,6 +87,6 @@ getEvolution gen0 targetPhenotype initialParent =
                      newBestGenotype newBestFitness newStagnationCounter
 
     in do
-        let (_, initFit) = processingChild targetPhenotype initialParent
+        let (_, initFit) = processingChild mask targetPhenotype initialParent
         putStrLn $ "Начальный фитнес родителя: " ++ show initFit
         loop gen0 1 initialParent initFit initialParent initFit 0

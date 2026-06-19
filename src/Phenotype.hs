@@ -47,10 +47,13 @@ drawSegments canvas ((start, end):rest) color = do
     drawLine canvas x1 y1 x2 y2 color
     drawSegments canvas rest color
 
-genotypeToPhenotype :: Genotype -> Phenotype
-genotypeToPhenotype genotype =
-    let directions = map genToDirections (take 15 genotype)  -- первые 15 генов задают скелет
-        stepLen = genotype !! 15                             -- 16-й ген задаёт длину отрезков (2..12)
+-- mask — 7 фиксированных позиций генов (из [0..14]), по которым строится скелет.
+-- Маска одна на весь запуск, поэтому генотип всегда даёт один и тот же фенотип.
+genotypeToPhenotype :: [Int] -> Genotype -> Phenotype
+genotypeToPhenotype mask genotype =
+    let selectedGenes = map (genotype !!) mask                -- случайно выбранные 7 генов
+        directions = map genToDirections selectedGenes        -- 7 генов задают скелет
+        stepLen = genotype !! 15                              -- 16-й ген задаёт длину отрезков (2..12)
         segments = buildVector (75, 75) directions stepLen
         size = 150
         allSegments = segments ++ buildMirrorVectors size segments
