@@ -40,9 +40,5 @@ main = do
     putStrLn "\nРодительский генотип:"
     print parent
 
-    let cnt_pokolenyi = 200
-
-    (bestGenes, bestFitness) <- getEvolution gen1 targetPhenotype parent cnt_pokolenyi
-
-    _ <- getEvolution gen1 targetPhenotype parent cnt_pokolenyi
+    getEvolution gen1 targetPhenotype parent
     putStrLn "\nГотово."

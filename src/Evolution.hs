@@ -9,6 +9,7 @@ import Fitness
 import Data.List (minimumBy)
 import System.Random
 import Codec.Picture (writePng)
+import Control.Monad (mapM_, when)
 
 -- Получить 7 случайных позиций (индексов) от 0 до 14
 getRandomPositions :: RandomGen g => g -> Int -> (Int, Int) -> ([Int], g)
@@ -53,30 +54,52 @@ processingChildrenWithSave generator targetPhenotype generation children = do
     mapM_ (\(idx, (selectedGenes, _, _)) -> saveChildPhenotype generation idx (genotypeToPhenotype selectedGenes)) (zip [0..] results)
     return (results, finalGen)
 
-getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> Int -> IO (Genotype, Double)
-getEvolution generator targetPhenotype parent_genotype 0 = do
-    -- базовый случай, который не должен вызываться при cnt_pokolenyi >= 1,
-    -- но на всякий случай вычислим фитнес для переданного генотипа
-    let (_, _, fitness, _) = processingChild generator targetPhenotype parent_genotype
-    putStrLn "Эволюция завершена."
-    return (parent_genotype, fitness)
+getEvolution :: RandomGen g => g -> Phenotype -> Genotype -> IO ()
+getEvolution gen0 targetPhenotype initialParent = 
+    let cnt_child = 20
+        stagnationLimit = 10
+        maxGenerations = 10000
 
-getEvolution generator targetPhenotype parent_genotype cnt_pokolenyi = do
-    let cnt_child = 10
-        (population, gen1) = generatePopulation generator parent_genotype cnt_child
-    (result_child, gen2) <- processingChildrenWithSave gen1 targetPhenotype cnt_pokolenyi population
+        loop :: RandomGen g => g -> Int -> Genotype -> [Gene] -> Double -> Int -> IO ()
+        loop gen currentGen parent bestSelected bestFitness stagnationCounter
+            | stagnationCounter >= stagnationLimit = do
+                putStrLn "\n=== Эволюция остановлена: стагнация 10 поколений ==="
+                let bestPhenotype = genotypeToPhenotype bestSelected
+                    filename = "Best_last.png"
+                writePng filename bestPhenotype
+                putStrLn $ "Лучший фенотип сохранён как " ++ filename
+                putStrLn $ "Фитнес: " ++ show bestFitness
+            | currentGen > maxGenerations = do
+                putStrLn "\n=== Достигнуто максимальное число поколений ==="
+                let bestPhenotype = genotypeToPhenotype bestSelected
+                    filename = "Best_last.png"
+                writePng filename bestPhenotype
+                putStrLn $ "Лучший фенотип сохранён как " ++ filename
+                putStrLn $ "Фитнес: " ++ show bestFitness
+            | otherwise = do
+                let (population, gen') = generatePopulation gen parent cnt_child
+                (result_child, gen'') <- processingChildrenWithSave gen' targetPhenotype currentGen population
 
-    -- Вывод всех фитнесов текущего поколения
-    putStrLn $ "\n=== Поколение " ++ show cnt_pokolenyi ++ " ==="
-    mapM_ (\(idx, (_, _, fitness)) ->
-        putStrLn $ "Ребёнок " ++ show idx ++ ": фитнес = " ++ show fitness
-        ) (zip [0..] result_child)
+                putStrLn $ "\n=== Поколение " ++ show currentGen ++ " ==="
+                mapM_ (\(idx, (_, _, fitness)) ->
+                    putStrLn $ "Ребёнок " ++ show idx ++ ": фитнес = " ++ show fitness
+                    ) (zip [0..] result_child)
 
-    let (_, bestFullGen, bestFitness) = 
-            minimumBy (\(_, _, f1) (_, _, f2) -> compare f1 f2) result_child
-    putStrLn $ "Лучший фитнес в поколении " ++ show cnt_pokolenyi ++ ": " ++ show bestFitness
+                let (bestSelectedGenes, bestFullGen, bestFitnessNew) = 
+                        minimumBy (\(_, _, f1) (_, _, f2) -> compare f1 f2) result_child
+                putStrLn $ "Лучший фитнес в поколении " ++ show currentGen ++ ": " ++ show bestFitnessNew
 
-    -- Если это последнее поколение, которое требовалось обработать, возвращаем его лучшего
-    if cnt_pokolenyi == 1
-        then return (bestFullGen, bestFitness)
-        else getEvolution gen2 targetPhenotype bestFullGen (cnt_pokolenyi - 1)
+                let improvementThreshold = 0.999
+                    improved = bestFitnessNew < bestFitness * improvementThreshold
+                    newStagnationCounter = if improved then 0 else stagnationCounter + 1
+
+                when (stagnationCounter > 0 && improved) $
+                    putStrLn "Стагнация прервана!"
+
+                loop gen'' (currentGen + 1) bestFullGen bestSelectedGenes bestFitnessNew newStagnationCounter
+
+    in do
+        -- Вычисляем начальный фитнес и выбранные 7 генов родителя
+        let (initSelected, initFull, initFit, gen1) = processingChild gen0 targetPhenotype initialParent
+        putStrLn $ "Начальный фитнес родителя: " ++ show initFit
+        loop gen1 1 initFull initSelected initFit 0
