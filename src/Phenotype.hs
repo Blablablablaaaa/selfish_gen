@@ -9,7 +9,6 @@ import Codec.Picture.Types
 import Codec.Picture.Drawing
 import Control.Monad.Primitive (PrimMonad, PrimState)
 import Control.Monad.ST (runST)
-import Data.Word (Word8)
 
 directionVector :: Direction -> (Int, Int)
 directionVector N  = (0, -1)    -- вверх
@@ -53,7 +52,7 @@ genotypeToPhenotype :: [Int] -> Genotype -> Phenotype
 genotypeToPhenotype mask genotype =
     let selectedGenes = map (genotype !!) mask                -- случайно выбранные 7 генов
         directions = map genToDirections selectedGenes        -- 7 генов задают скелет
-        stepLen = (genotype !! 15) * 5                        -- 16-й ген задаёт длину (2..12), масштаб x5 -> 10..60 px
+        stepLen = min 10 (genotype !! 15)                     -- 16-й ген задаёт длину (2..12), зажата до <=10, чтобы фигура помещалась в холст
         segments = buildVector (75, 75) directions stepLen
         size = 150
         allSegments = segments ++ buildMirrorVectors size segments
